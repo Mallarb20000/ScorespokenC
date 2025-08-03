@@ -353,7 +353,12 @@ Please analyze the audio and provide your assessment.`
  * - JSON parsing and error handling
  * - HTTP status codes and error responses
  */
-app.post('/api/analyze-answer', upload.single('audio'), async (req, res) => {
+app.post('/api/analyze-answer', upload.fields([
+  { name: 'audio_0', maxCount: 1 },
+  { name: 'questions', maxCount: 1 },
+  { name: 'testType', maxCount: 1 },
+  { name: 'metadata', maxCount: 1 }
+]), async (req, res) => {
   
   // =============================================================================
   // REQUEST LOGGING AND DEBUGGING
@@ -366,8 +371,8 @@ app.post('/api/analyze-answer', upload.single('audio'), async (req, res) => {
    * - Headers for troubleshooting CORS/content-type issues
    */
   console.log('Received request:', {
-    hasFile: !!req.file,
-    fileSize: req.file?.size,
+    hasFile: !!req.files?.audio_0?.[0],
+    fileSize: req.files?.audio_0?.[0]?.size,
     question: req.body?.question,
     headers: req.headers
   })
@@ -381,7 +386,7 @@ app.post('/api/analyze-answer', upload.single('audio'), async (req, res) => {
      * Validate audio file presence:
      * Multer stores uploaded file in req.file, null if missing
      */
-    if (!req.file) {
+    if (!req.files?.audio_0?.[0]) {
       console.log('No audio file in request')
       return res.status(400).json({ error: 'No audio file provided' })
     }
@@ -404,8 +409,8 @@ app.post('/api/analyze-answer', upload.single('audio'), async (req, res) => {
      * Validate audio file size and content:
      * Check for empty or extremely small audio files before processing
      */
-    if (req.file.size < 1000) { // Less than 1KB likely empty or corrupted
-      console.log('Audio file too small:', req.file.size, 'bytes')
+    if (req.files.audio_0[0].size < 1000) { // Less than 1KB likely empty or corrupted
+      console.log('Audio file too small:', req.files.audio_0[0].size, 'bytes')
       return res.json({
         transcript: "AUDIO NOT CLEAR",
         score: "0",
@@ -422,7 +427,7 @@ app.post('/api/analyze-answer', upload.single('audio'), async (req, res) => {
      * Gemini API requires binary data as base64 string
      * req.file.buffer contains the raw audio data from Multer
      */
-    const audioBase64 = req.file.buffer.toString('base64')
+    const audioBase64 = req.files.audio_0[0].buffer.toString('base64')
     
     // =============================================================================
     // AI MODEL CONFIGURATION
@@ -466,7 +471,7 @@ app.post('/api/analyze-answer', upload.single('audio'), async (req, res) => {
       {
         inlineData: {
           data: audioBase64,              // Base64 encoded audio
-          mimeType: req.file.mimetype     // e.g., 'audio/webm'
+          mimeType: req.files.audio_0[0].mimetype     // e.g., 'audio/webm'
         }
       }
     ])
@@ -591,7 +596,10 @@ app.post('/api/analyze-part1', upload.fields([
   { name: 'audio_1', maxCount: 1 },
   { name: 'audio_2', maxCount: 1 },
   { name: 'audio_3', maxCount: 1 },
-  { name: 'audio_4', maxCount: 1 }
+  { name: 'audio_4', maxCount: 1 },
+  { name: 'questions', maxCount: 1 },
+  { name: 'testType', maxCount: 1 },
+  { name: 'metadata', maxCount: 1 }
 ]), async (req, res) => {
   
   console.log('Received Part 1 request:', {
@@ -993,11 +1001,16 @@ Provide IELTS band scores and specific feedback in JSON format:
  * - Descriptive and narrative language
  * - Personal experience elaboration
  */
-app.post('/api/analyze-part2', upload.single('audio'), async (req, res) => {
+app.post('/api/analyze-part2', upload.fields([
+  { name: 'audio_0', maxCount: 1 },
+  { name: 'questions', maxCount: 1 },
+  { name: 'testType', maxCount: 1 },
+  { name: 'metadata', maxCount: 1 }
+]), async (req, res) => {
   
   console.log('Received Part 2 request:', {
-    hasFile: !!req.file,
-    fileSize: req.file?.size,
+    hasFile: !!req.files?.audio_0?.[0],
+    fileSize: req.files?.audio_0?.[0]?.size,
     topic: req.body?.topic,
     testType: req.body?.testType
   })
@@ -1007,7 +1020,7 @@ app.post('/api/analyze-part2', upload.single('audio'), async (req, res) => {
     // VALIDATE PART 2 REQUEST
     // =============================================================================
     
-    if (!req.file) {
+    if (!req.files?.audio_0?.[0]) {
       return res.status(400).json({ error: 'No audio file provided' })
     }
     
@@ -1029,7 +1042,7 @@ app.post('/api/analyze-part2', upload.single('audio'), async (req, res) => {
     // PROCESS AUDIO FOR PART 2
     // =============================================================================
     
-    const audioBase64 = req.file.buffer.toString('base64')
+    const audioBase64 = req.files.audio_0[0].buffer.toString('base64')
     
     // =============================================================================
     // CREATE PART 2 SPECIFIC PROMPT
@@ -1111,7 +1124,7 @@ Format your response as JSON:
       {
         inlineData: {
           data: audioBase64,
-          mimeType: req.file.mimetype
+          mimeType: req.files.audio_0[0].mimetype
         }
       }
     ])
@@ -1183,7 +1196,10 @@ app.post('/api/analyze-part3', upload.fields([
   { name: 'audio_1', maxCount: 1 },
   { name: 'audio_2', maxCount: 1 },
   { name: 'audio_3', maxCount: 1 },
-  { name: 'audio_4', maxCount: 1 }
+  { name: 'audio_4', maxCount: 1 },
+  { name: 'questions', maxCount: 1 },
+  { name: 'testType', maxCount: 1 },
+  { name: 'metadata', maxCount: 1 }
 ]), async (req, res) => {
   
   console.log('Received Part 3 request:', {

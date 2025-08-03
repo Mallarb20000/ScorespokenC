@@ -104,7 +104,10 @@ router.post('/part1', upload.fields([
   { name: 'audio_1', maxCount: 1 },
   { name: 'audio_2', maxCount: 1 },
   { name: 'audio_3', maxCount: 1 },
-  { name: 'audio_4', maxCount: 1 }
+  { name: 'audio_4', maxCount: 1 },
+  { name: 'questions', maxCount: 1 },
+  { name: 'testType', maxCount: 1 },
+  { name: 'metadata', maxCount: 1 }
 ]), async (req, res) => {
   try {
     const { questions, testType = 'part1' } = req.body
@@ -282,7 +285,10 @@ router.post('/part3', upload.fields([
   { name: 'audio_1', maxCount: 1 },
   { name: 'audio_2', maxCount: 1 },
   { name: 'audio_3', maxCount: 1 },
-  { name: 'audio_4', maxCount: 1 }
+  { name: 'audio_4', maxCount: 1 },
+  { name: 'questions', maxCount: 1 },
+  { name: 'testType', maxCount: 1 },
+  { name: 'metadata', maxCount: 1 }
 ]), async (req, res) => {
   try {
     const { questions, testType = 'part3' } = req.body

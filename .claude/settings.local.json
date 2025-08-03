@@ -21,7 +21,9 @@
       "Bash(rm:*)",
       "Bash(cmd /c start:*)",
       "Bash(npx kill-port:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(find:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }
