@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(node server.js)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(npm start)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(choco:*)",
+      "Bash(powershell:*)",
+      "Bash(winget install:*)",
+      "Bash(ffmpeg:*)",
+      "Bash(pkill:*)",
+      "Bash(true)",
+      "Bash(npm run build:*)",
+      "Bash(start http://localhost:3000)",
+      "Bash(cmd /c start http://localhost:3000)",
+      "mcp__playwright",
+      "Bash(rm:*)",
+      "Bash(cmd /c start:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(node:*)"
+    ],
+    "deny": []
+  }
+}
