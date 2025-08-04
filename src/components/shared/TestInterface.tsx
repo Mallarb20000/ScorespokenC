@@ -75,10 +75,17 @@ export const TestInterface: React.FC<TestInterfaceProps> = ({
 
   // Auto-start test when component mounts
   useEffect(() => {
+    console.log('TestInterface useEffect, testStarted:', state.testFlow.testStarted)
     if (!state.testFlow.testStarted) {
+      console.log('Calling startTest...')
       startTest()
     }
   }, [state.testFlow.testStarted, startTest])
+
+  // Debug state changes
+  useEffect(() => {
+    console.log('TestInterface state changed:', state)
+  }, [state])
 
   // Test not started - show loading screen
   if (!state.testFlow.testStarted) {

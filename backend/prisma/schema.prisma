@@ -1,0 +1,224 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User management
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  avatar      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Authentication
+  authProvider String @default("local") // local, google, facebook
+  authId       String?
+  
+  // User preferences
+  preferences  UserPreferences?
+  
+  // Relationships
+  testSessions TestSession[]
+  analytics    UserAnalytics[]
+  
+  @@map("users")
+}
+
+model UserPreferences {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+  
+  // IELTS preferences  
+  targetScore      Float?  @default(6.5)
+  preferredPart    String? // part1, part2, part3, all
+  difficultyLevel  String? @default("intermediate") // beginner, intermediate, advanced
+  
+  // Audio preferences
+  recordingMode    String @default("voice-activated") // voice-activated, push-to-talk
+  playbackSpeed    Float  @default(1.0)
+  
+  // UI preferences
+  theme           String @default("light") // light, dark, system
+  language        String @default("en")
+  notifications   Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("user_preferences")
+}
+
+// Test session management
+model TestSession {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  
+  // Test details
+  testType     String   // quick-drill, part1, part2, part3, full-test
+  status       String   @default("in_progress") // in_progress, completed, abandoned
+  startedAt    DateTime @default(now())
+  completedAt  DateTime?
+  duration     Int?     // Duration in seconds
+  
+  // Questions and responses
+  questions    Json     // Array of questions asked
+  responses    TestResponse[]
+  
+  // Overall scoring
+  overallScore Float?
+  
+  // Session metadata
+  metadata     Json?    // Browser info, device info, etc.
+  
+  @@map("test_sessions")
+}
+
+model TestResponse {
+  id            String      @id @default(cuid())
+  sessionId     String
+  session       TestSession @relation(fields: [sessionId], references: [id])
+  
+  // Question details
+  questionIndex Int
+  question      String
+  questionType  String      // personal, cue-card, discussion
+  
+  // Audio details
+  audioUrl      String?
+  audioSize     Int?        // Size in bytes
+  audioDuration Float?      // Duration in seconds
+  audioFormat   String?     // webm, wav, mp3
+  
+  // AI Analysis results
+  transcript           String?
+  overallScore         Float?
+  fluencyScore         Float?
+  lexicalScore         Float?
+  grammaticalScore     Float?
+  pronunciationScore   Float?
+  
+  // Detailed feedback
+  feedback      Json?       // Structured feedback from AI
+  
+  // Processing metadata
+  aiProvider    String?     // gemini, openai, claude
+  aiModel       String?     // gemini-2.0-flash-exp, etc.
+  processingTime Int?       // Time taken for AI analysis in milliseconds
+  cost          Float?      // Cost of AI processing
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@map("test_responses")
+}
+
+// Analytics and progress tracking
+model UserAnalytics {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  // Date tracking
+  date      DateTime @default(now())
+  
+  // Usage metrics
+  sessionsCount       Int @default(0)
+  totalAudioMinutes   Float @default(0)
+  questionsAnswered   Int @default(0)
+  
+  // Performance metrics
+  averageScore        Float?
+  averageFluency      Float?
+  averageLexical      Float?
+  averageGrammatical  Float?
+  averagePronunciation Float?
+  
+  // Progress indicators
+  improvementRate     Float? // Week-over-week improvement
+  consistencyScore    Float? // How regularly they practice
+  
+  @@unique([userId, date])
+  @@map("user_analytics")
+}
+
+// Question bank management
+model QuestionBank {
+  id          String @id @default(cuid())
+  
+  // Question details
+  type        String   // part1, part2, part3
+  category    String?  // work, education, hobbies, etc.
+  difficulty  String   @default("intermediate") // beginner, intermediate, advanced
+  
+  // Content
+  question    String
+  context     String?  // For Part 2 cue cards
+  bulletPoints Json?   // For Part 2 cue cards
+  followUps   Json?    // Related follow-up questions
+  
+  // Metadata
+  isActive    Boolean  @default(true)
+  usage_count Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("question_bank")
+}
+
+// System configuration and feature flags
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  type        String   @default("string") // string, number, boolean, json
+  description String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("system_config")
+}
+
+// API usage tracking for cost management
+model ApiUsage {
+  id          String   @id @default(cuid())
+  
+  // Request details
+  endpoint    String
+  method      String
+  userId      String?
+  sessionId   String?
+  
+  // AI service details
+  provider    String   // gemini, openai, claude
+  model       String
+  
+  // Token usage
+  inputTokens  Int?
+  outputTokens Int?
+  audioMinutes Float?
+  
+  // Cost tracking
+  cost        Float?
+  
+  // Performance
+  responseTime Int?    // Response time in milliseconds
+  success     Boolean @default(true)
+  errorCode   String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("api_usage")
+}

@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import Navbar from './components/Navbar'
 import ClientLayout from './ClientLayout'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 export const metadata: Metadata = {
   title: 'ScoreSpoken - IELTS Speaking Practice',
@@ -16,10 +17,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ClientLayout>
-          <Navbar />
-          {children}
-        </ClientLayout>
+        <AuthProvider>
+          <ClientLayout>
+            <Navbar />
+            {children}
+          </ClientLayout>
+        </AuthProvider>
       </body>
     </html>
   )

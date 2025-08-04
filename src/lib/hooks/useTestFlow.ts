@@ -104,15 +104,11 @@ export function useTestFlow({
   // =============================================================================
   
   const startTest = useCallback(() => {
+    console.log('startTest called, config:', config)
+    console.log('testStarted before:', state.testFlow.testStarted)
     dispatch({ type: 'START_TEST' })
-    
-    // Auto-play first question if TTS is enabled
-    if (config.questions.length > 0) {
-      setTimeout(() => {
-        speakCurrentQuestion()
-      }, 1000)
-    }
-  }, [config.questions.length])
+    console.log('START_TEST dispatched')
+  }, [config, state.testFlow.testStarted])
   
   const resetTest = useCallback(() => {
     // Cancel any auto-submission

@@ -73,6 +73,14 @@ const config = {
     skipSuccessfulRequests: process.env.RATE_LIMIT_SKIP_SUCCESS === 'true'
   },
 
+  // Firebase Configuration
+  firebase: {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    serviceAccount: process.env.FIREBASE_SERVICE_ACCOUNT, // JSON string
+    webApiKey: process.env.FIREBASE_WEB_API_KEY,
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN
+  },
+
   // Logging
   logging: {
     level: process.env.LOG_LEVEL || 'info',
@@ -94,6 +102,11 @@ const validateConfig = () => {
 
   if (!config.ai.apiKey) {
     errors.push('GEMINI_API_KEY is required')
+  }
+
+  // Firebase validation (optional - can run without Firebase)
+  if (config.firebase.projectId && !config.firebase.serviceAccount) {
+    console.warn('⚠️  Firebase project ID provided but no service account - using default credentials')
   }
 
   if (config.storage.type === 's3') {

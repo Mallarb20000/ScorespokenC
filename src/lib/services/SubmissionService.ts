@@ -9,6 +9,14 @@
 
 import { TestType, QuestionAnswer, TestResults, AppError } from '../types'
 
+// Get Firebase token from localStorage or auth context
+const getAuthToken = (): string | null => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('firebaseToken')
+  }
+  return null
+}
+
 export interface SubmissionConfig {
   endpoint: string
   testType: TestType
@@ -101,9 +109,18 @@ export class SubmissionService {
         config.timeout ?? this.DEFAULT_TIMEOUT
       )
 
+      // Get auth token and add to headers
+      const token = getAuthToken()
+      const headers: HeadersInit = {}
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       // Make request
       const response = await fetch(`http://localhost:3002${config.endpoint}`, {
         method: 'POST',
+        headers,
         body: formData,
         signal: controller.signal
       })
