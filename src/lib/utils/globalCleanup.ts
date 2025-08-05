@@ -88,6 +88,13 @@ export function setupNextJSCleanup(): (() => void) | undefined {
 
   // Listen for Next.js route changes
   const handleRouteChange = () => {
+    // Skip cleanup when navigating TO results page to preserve sessionStorage
+    const currentPath = window.location.pathname
+    if (currentPath === '/results' || currentPath.startsWith('/results')) {
+      console.log('🔄 Skipping cleanup for results page navigation')
+      return
+    }
+    
     cleanupAllResources()
   }
 

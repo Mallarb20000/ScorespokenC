@@ -14,10 +14,21 @@ const path = require('path')
 const { v4: uuidv4 } = require('uuid')
 
 class DiskStorage extends StorageInterface {
-  constructor(baseDir = './temp') {
+  constructor(config = './temp') {
     super()
-    this.baseDir = baseDir
-    this.metadataFile = path.join(baseDir, '.metadata.json')
+    
+    // Handle both string and object parameters for backward compatibility
+    if (typeof config === 'string') {
+      this.baseDir = config
+      this.maxFileSize = 10 * 1024 * 1024 // 10MB default
+      this.cleanupInterval = 3600000 // 1 hour default
+    } else {
+      this.baseDir = config.baseDir || './temp'
+      this.maxFileSize = config.maxFileSize || 10 * 1024 * 1024
+      this.cleanupInterval = config.cleanupInterval || 3600000
+    }
+    
+    this.metadataFile = path.join(this.baseDir, '.metadata.json')
     this.metadata = new Map()
     
     this.init()
@@ -43,9 +54,14 @@ class DiskStorage extends StorageInterface {
     }
   }
 
-  async store(fileBuffer, filename, mimetype) {
+  async store(fileBuffer, filename, mimetype, userId = 'anonymous') {
     const identifier = `${Date.now()}_${uuidv4()}_${filename}`
-    const filePath = path.join(this.baseDir, identifier)
+    
+    // Create user-specific subdirectory for isolation
+    const userDir = path.join(this.baseDir, userId)
+    await fs.mkdir(userDir, { recursive: true })
+    
+    const filePath = path.join(userDir, identifier)
     
     const metadata = {
       filename,
@@ -53,6 +69,7 @@ class DiskStorage extends StorageInterface {
       size: fileBuffer.length,
       created: new Date(),
       identifier,
+      userId,
       path: filePath
     }
 
@@ -160,13 +177,31 @@ class DiskStorage extends StorageInterface {
     return `/temp/${identifier}`
   }
 
-  // Save metadata to disk
+  // Save metadata to disk with lock to prevent race conditions
   async saveMetadata() {
+    // Simple lock mechanism to prevent concurrent metadata writes
+    if (this._savingMetadata) {
+      await new Promise(resolve => {
+        const checkLock = () => {
+          if (!this._savingMetadata) {
+            resolve()
+          } else {
+            setTimeout(checkLock, 10)
+          }
+        }
+        checkLock()
+      })
+      return
+    }
+
+    this._savingMetadata = true
     try {
       const metadataObj = Object.fromEntries(this.metadata)
       await fs.writeFile(this.metadataFile, JSON.stringify(metadataObj, null, 2))
     } catch (error) {
       console.error('Failed to save metadata:', error)
+    } finally {
+      this._savingMetadata = false
     }
   }
 

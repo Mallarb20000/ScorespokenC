@@ -19,11 +19,16 @@ class GeminiAI extends AIInterface {
     this.totalCost = 0
   }
 
-  async analyzeSingleAudio(audioBuffer, question, testType = 'quick-drill') {
+  async analyzeSingleAudio(audioBuffer, question, testType = 'quick-drill', progressCallback = null) {
     try {
       this.requestCount++
+      
+      if (progressCallback) progressCallback('Processing audio', 1, 4)
+      
       const audioBase64 = audioBuffer.toString('base64')
       const prompt = this.generatePrompt(question, testType)
+
+      if (progressCallback) progressCallback('Analyzing with AI', 2, 4)
 
       const result = await this.model.generateContent([
         prompt,
@@ -35,6 +40,8 @@ class GeminiAI extends AIInterface {
         }
       ])
 
+      if (progressCallback) progressCallback('Calculating scores', 3, 4)
+
       const response = result.response
       const text = response.text()
 
@@ -43,6 +50,8 @@ class GeminiAI extends AIInterface {
       const outputTokens = this.estimateTextTokens(text)
       const cost = this.calculateCost(inputTokens, outputTokens)
       this.totalCost += cost
+
+      if (progressCallback) progressCallback('Generating feedback', 4, 4)
 
       return this.parseResponse(text, { inputTokens, outputTokens, cost })
 

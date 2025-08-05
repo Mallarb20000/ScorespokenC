@@ -38,30 +38,137 @@ export const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Cleanup on component unmount - use centralized cleanup
+  // Cleanup audio playback on component unmount (don't clear session data)
   useEffect(() => {
     return () => {
-      cleanupAllResources()
+      // Only cleanup audio playback, not session data
       setIsPlayingAudio(false)
     }
   }, [])
 
-  // Extract data from URL parameters
+  // Safe base64 decoding function
+  const safeBase64Decode = (str: string): string | null => {
+    try {
+      return atob(str)
+    } catch (error) {
+      // Silently handle malformed base64 data without console spam
+      return null
+    }
+  }
+
+  // Safe URI decoding function (fallback for old URLs)
+  const safeDecodeURIComponent = (str: string): string | null => {
+    try {
+      return decodeURIComponent(str)
+    } catch (error) {
+      // Silently handle malformed URI components without console spam
+      return null
+    }
+  }
+
+  // Extract data from URL parameters or sessionStorage
   useEffect(() => {
     try {
+      const sessionId = searchParams.get('session')
       const resultsParam = searchParams.get('data')
       const questionsParam = searchParams.get('questions')
       
+      // Check for error parameter first
+      const errorParam = searchParams.get('error')
+      if (errorParam) {
+        console.log('❌ Error parameter found:', errorParam)
+        setError('Failed to load results: ' + errorParam.replace(/_/g, ' '))
+        return
+      }
+
+      // New approach: Load from sessionStorage using session ID
+      if (sessionId) {
+        console.log('🔍 Loading results from session:', sessionId)
+        
+        const sessionData = sessionStorage.getItem(sessionId)
+        if (sessionData) {
+          try {
+            const parsedSession = JSON.parse(sessionData)
+            console.log('✅ Session data loaded:', parsedSession)
+            
+            // Handle nested data structure from backend response
+            let decodedResults = parsedSession.data.success ? parsedSession.data.data : parsedSession.data
+            
+            // Extract audio URLs from processing_info if they're not at root level
+            if (decodedResults.processing_info) {
+              decodedResults = {
+                ...decodedResults,
+                audio_url: decodedResults.processing_info.audio_url || decodedResults.audio_url,
+                merged_audio_url: decodedResults.processing_info.merged_audio_url || decodedResults.merged_audio_url,
+                individual_audio_urls: decodedResults.processing_info.individual_audio_urls || decodedResults.individual_audio_urls
+              }
+            }
+            
+            console.log('🎵 Final audio URLs:', {
+              audio_url: decodedResults.audio_url,
+              merged_audio_url: decodedResults.merged_audio_url,
+              individual_audio_urls: decodedResults.individual_audio_urls
+            })
+            
+            setResults(decodedResults)
+            setQuestions(parsedSession.questions || [])
+            
+            // Keep session data for now (don't clean up immediately)
+            console.log('✅ Session data preserved for potential reuse')
+            
+            return // Exit early, we found session data
+          } catch (parseError) {
+            console.error('❌ Failed to parse session data:', parseError)
+            setError('Invalid session data format')
+            return
+          }
+        } else {
+          console.log('❌ Session data not found:', sessionId)
+          setError('Session expired or results not found')
+          return
+        }
+      }
+      
+      // Fallback: Load from URL parameters (legacy support)
+      console.log('🔍 Debug - URL params:', { resultsParam: resultsParam?.substring(0, 100), questionsParam })
+      
       if (resultsParam) {
-        const decodedResults = JSON.parse(decodeURIComponent(resultsParam))
-        setResults(decodedResults)
+        // Try base64 decoding first (new format), fallback to URI decoding (old format)
+        let decodedParam = safeBase64Decode(resultsParam)
+        if (!decodedParam) {
+          console.log('🔍 Base64 decode failed, trying URI decode...')
+          decodedParam = safeDecodeURIComponent(resultsParam)
+        } else {
+          console.log('✅ Base64 decode successful')
+        }
+        
+        if (decodedParam) {
+          const parsedData = JSON.parse(decodedParam)
+          console.log('✅ Results parsed:', parsedData)
+          
+          // Handle nested data structure from backend response
+          const decodedResults = parsedData.success ? parsedData.data : parsedData
+          setResults(decodedResults)
+        } else {
+          console.log('❌ All decoding methods failed')
+          setError('Invalid results data format')
+        }
       } else {
+        console.log('❌ No results param or session found in URL')
         setError('No results data found')
       }
       
       if (questionsParam) {
-        const decodedQuestions = JSON.parse(decodeURIComponent(questionsParam))
-        setQuestions(decodedQuestions)
+        // Try base64 decoding first (new format), fallback to URI decoding (old format)
+        let decodedParam = safeBase64Decode(questionsParam)
+        if (!decodedParam) {
+          decodedParam = safeDecodeURIComponent(questionsParam)
+        }
+        
+        if (decodedParam) {
+          const decodedQuestions = JSON.parse(decodedParam)
+          setQuestions(decodedQuestions)
+        }
       }
       
     } catch (error) {
@@ -72,7 +179,11 @@ export const UnifiedResults: React.FC<UnifiedResultsProps> = ({
 
   // Audio playback handler
   const handlePlayAudio = async () => {
-    if (!results || isPlayingAudio) return
+    console.log('🎵 Play button clicked!', { results: !!results, isPlayingAudio })
+    if (!results || isPlayingAudio) {
+      console.log('❌ Playback blocked:', { noResults: !results, alreadyPlaying: isPlayingAudio })
+      return
+    }
 
     try {
       // Stop any currently playing audio first
@@ -85,9 +196,22 @@ export const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       } else if (results.merged_audio_url) {
         // Single merged audio file
         await audioPlayer.playAudio(`http://localhost:3002${results.merged_audio_url}`)
+      } else if (results.audio_url) {
+        // Play from memory storage (original uncompressed audio)
+        console.log('🎵 Playing from memory:', results.audio_url)
+        await audioPlayer.playAudio(results.audio_url)
+      } else {
+        console.log('❌ No audio URL found in results:', results)
       }
     } catch (error) {
-      console.error('Error playing audio:', error)
+      console.error('❌ Error playing audio:', error)
+      console.error('❌ Error message:', error.message)
+      console.error('❌ Error stack:', error.stack)
+      console.error('Audio URLs available:', {
+        audio_url: results.audio_url,
+        merged_audio_url: results.merged_audio_url,
+        individual_audio_urls: results.individual_audio_urls
+      })
     } finally {
       setIsPlayingAudio(false)
     }
@@ -214,7 +338,7 @@ export const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           </div>
 
           {/* Audio Playback */}
-          {(results.merged_audio_url || results.individual_audio_urls) && (
+          {(results.merged_audio_url || results.individual_audio_urls || results.audio_url) && (
             <div style={{
               background: '#f8fafc',
               borderRadius: '8px',
@@ -239,7 +363,7 @@ export const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                   opacity: isPlayingAudio ? 0.7 : 1
                 }}
               >
-                {isPlayingAudio ? '🔄 Playing...' : '▶️ Play Your Answer'}
+                {isPlayingAudio ? 'Playing...' : 'Play Your Answer'}
               </button>
               <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px', margin: '6px 0 0 0' }}>
                 {results.individual_audio_urls && results.individual_audio_urls.length > 1
@@ -415,7 +539,7 @@ export const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               fontWeight: 'bold'
             }}
           >
-            🔄 Take Test Again
+            Take Test Again
           </button>
           
           <button
@@ -431,7 +555,7 @@ export const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               fontWeight: 'bold'
             }}
           >
-            🏠 Back to Home
+            Back to Home
           </button>
         </div>
       </div>
